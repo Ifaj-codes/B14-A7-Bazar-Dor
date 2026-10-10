@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { connection } from "next/server";
+
+export const dynamic = 'force-dynamic';
 
 const enToBnNumber = (numStr: string | number) => {
   if (!numStr && numStr !== 0) return '০';
@@ -61,7 +62,6 @@ const ProductCard = ({ product }: { product: any }) => {
 };
 
 export default async function Home() {
-  await connection();
   let productsList: any[] = [];
   
   try {
