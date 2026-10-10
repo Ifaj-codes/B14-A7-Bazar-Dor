@@ -1,25 +1,12 @@
 import Link from "next/link";
+import { connection } from "next/server";
 
-// english number ke bangla number e convert korar function
 const enToBnNumber = (numStr: string | number) => {
   if (!numStr && numStr !== 0) return '০';
   const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
   return String(numStr).replace(/\d/g, d => bnDigits[parseInt(d)]);
 };
 
-// ajker date ber korar jonno
-const getBengaliDate = () => {
-  const days = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
-  const months = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
-  const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-  
-  const toBnNum = (num: number) => num.toString().split('').map(d => bnDigits[parseInt(d)] || d).join('');
-  const d = new Date();
-  
-  return `${days[d.getDay()]}, ${toBnNum(d.getDate())} ${months[d.getMonth()]}, ${toBnNum(d.getFullYear())}`;
-};
-
-// unit format korar jonno choto ekta helper
 const formatUnit = (unit: string) => {
   if (!unit) return "প্রতি কেজি";
   const u = unit.toLowerCase();
@@ -30,7 +17,6 @@ const formatUnit = (unit: string) => {
   return `প্রতি ${unit}`;
 };
 
-// Product Card Component (Figma design onujayi)
 const ProductCard = ({ product }: { product: any }) => {
   const name = product?.nameBn || "পণ্যের নাম";
   const emoji = product?.image || "🛒";
@@ -40,14 +26,12 @@ const ProductCard = ({ product }: { product: any }) => {
   let changeDir = '—';
   let changePct = '০.০';
   
-  // change calculation
   if (product?.change && typeof product.change === 'object') {
     changeDir = product.change.dir === 'up' ? '▲' : (product.change.dir === 'down' ? '▼' : '—');
     let pctVal = parseFloat(product.change.pct || '0');
     changePct = enToBnNumber(isNaN(pctVal) ? '0' : Math.abs(pctVal).toString());
   }
 
-  // color set korchi
   const changeColor = changeDir === '▲' ? 'text-red-500' : changeDir === '▼' ? 'text-green-600' : 'text-gray-500';
 
   return (
@@ -77,38 +61,32 @@ const ProductCard = ({ product }: { product: any }) => {
 };
 
 export default async function Home() {
-  const currentDate = getBengaliDate(); 
+  await connection();
   let productsList: any[] = [];
   
-  // Try korchi main API theke data anar
   try {
     const res = await fetch("https://openapi.programming-hero.com/api/bazardor/products", { cache: "no-store" });
     const data = await res.json();
     productsList = Array.isArray(data) ? data : (data?.products || data?.data || []);
-    // console.log("Main api data:", productsList.length);
   } catch (error) {
-    // Main api down thakle ei alternative API theke data asbe
-    // console.log("Main api error, trying alternative...");
     try {
       const res2 = await fetch("https://api.api-store.workers.dev/api/bazardor/products", { cache: "no-store" });
       const data2 = await res2.json();
       productsList = Array.isArray(data2) ? data2 : (data2?.products || data2?.data || []);
     } catch (err) {
-      console.error("Dui API e down!", err);
+      console.error("API Error", err);
     }
   }
 
-  // filter kore riser ar faller ber korchi (top 6 ta)
   const risers = [...productsList].filter((p: any) => p?.change?.dir === 'up').sort((a: any, b: any) => parseFloat(b?.change?.pct || 0) - parseFloat(a?.change?.pct || 0)).slice(0, 6);
   const fallers = [...productsList].filter((p: any) => p?.change?.dir === 'down').sort((a: any, b: any) => parseFloat(b?.change?.pct || 0) - parseFloat(a?.change?.pct || 0)).slice(0, 6);
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
-      {/* Hero Section */}
       <div className="bg-[#f0fdf4] rounded-2xl p-8 mb-12 flex flex-col-reverse md:flex-row items-center justify-between border border-green-100">
         <div className="max-w-lg">
           <div className="bg-green-100 text-green-800 font-medium text-sm px-4 py-1.5 rounded-full inline-block mb-4">
-            {currentDate}
+            আজকের বাজার দর আপডেট
           </div>
           <h1 className="text-3xl md:text-5xl font-bold text-gray-900 leading-tight mb-4">
             আজকের বাজারের দাম এক নজরে
@@ -125,7 +103,6 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* Riser Section */}
       {risers.length > 0 && (
         <div className="mb-10">
           <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="text-red-500">▲</span> আজ দাম বেড়েছে</h2>
@@ -135,7 +112,6 @@ export default async function Home() {
         </div>
       )}
 
-      {/* Faller Section */}
       {fallers.length > 0 && (
         <div className="mb-10">
           <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="text-green-600">▼</span> আজ দাম কমেছে</h2>
@@ -145,7 +121,6 @@ export default async function Home() {
         </div>
       )}
 
-      {/* All Products */}
       <div id="সব-পণ্য">
         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="text-blue-500">■</span> সব পণ্য</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
