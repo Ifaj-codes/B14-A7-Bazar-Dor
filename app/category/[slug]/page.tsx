@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
-// utility function for converting to bangla
+// নাম্বার কনভার্টার
 const enToBnNumber = (numStr: string | number) => {
   if (!numStr && numStr !== 0) return '০';
   const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -20,6 +21,7 @@ const formatUnit = (unit: string) => {
   return `প্রতি ${unit}`;
 };
 
+// প্রোডাক্ট কার্ড কম্পোনেন্ট
 const ProductCard = ({ product }: { product: any }) => {
   const name = product?.nameBn || "পণ্যের নাম";
   const emoji = product?.image || "🛒";
@@ -28,6 +30,7 @@ const ProductCard = ({ product }: { product: any }) => {
   
   let changeDir = '—';
   let changePct = '০.০';
+  
   if (product?.change && typeof product.change === 'object') {
     changeDir = product.change.dir === 'up' ? '▲' : (product.change.dir === 'down' ? '▼' : '—');
     let pctVal = parseFloat(product.change.pct || '0');
@@ -37,8 +40,8 @@ const ProductCard = ({ product }: { product: any }) => {
   const changeColor = changeDir === '▲' ? 'text-red-500' : changeDir === '▼' ? 'text-green-600' : 'text-gray-500';
 
   return (
-    <Link href={`/product/${product?.slug || product?.id || 1}`}>
-      <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all cursor-pointer h-full">
+    <Link href={`/product/${product?.slug || product?.id}`}>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all cursor-pointer h-full flex flex-col justify-between">
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center gap-3">
              <div className="text-3xl bg-gray-50 p-2 rounded-lg">{emoji}</div>
@@ -62,120 +65,93 @@ const ProductCard = ({ product }: { product: any }) => {
   );
 };
 
-export default function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const [slug, setSlug] = useState("");
-  const [productsData, setProductsData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function CategoryPage() {
+  const params = useParams();
+  const slug = params.slug as string;
+  const [products, setProducts] = useState<any[]>([]);
   const [sortOrder, setSortOrder] = useState("default");
+  const [loading, setLoading] = useState(true);
 
-  // react hook theke params niteshi
   useEffect(() => {
-    params.then(res => setSlug(res.slug));
-  }, [params]);
-
-  // category products fetch
-  useEffect(() => {
-    if (!slug) return;
-    
-    const fetchCategoryProducts = async () => {
-      setIsLoading(true);
-      let allData = [];
-
+    const fetchProducts = async () => {
       try {
         const res = await fetch("https://openapi.programming-hero.com/api/bazardor/products");
-        if(!res.ok) throw new Error("Main API error");
         const data = await res.json();
-        allData = Array.isArray(data) ? data : (data.products || data.data || []);
+        const all = Array.isArray(data) ? data : (data?.products || data?.data || []);
+        
+        // এখানে slug চেক করার লজিকটা একটু ফ্লেক্সিবল করে দিয়েছি
+        const filtered = all.filter((p: any) => p.category?.toLowerCase() === slug?.toLowerCase());
+        setProducts(filtered);
       } catch (error) {
-        // console.log("switching to alternative api");
-        try {
-          const res2 = await fetch("https://api.api-store.workers.dev/api/bazardor/products");
-          const data2 = await res2.json();
-          allData = Array.isArray(data2) ? data2 : (data2.products || data2.data || []);
-        } catch (err) {
-          console.error("Data fetch failed", err);
-        }
+        console.error("API Error", error);
+      } finally {
+        setLoading(false);
       }
-
-      // slug er sathe match kore filter korchi
-      const filteredCategory = allData.filter((p: any) => 
-        p.category?.toLowerCase() === slug.toLowerCase() || 
-        p.categoryNameEn?.toLowerCase() === slug.toLowerCase()
-      );
-
-      setProductsData(filteredCategory);
-      setIsLoading(false);
     };
-
-    fetchCategoryProducts();
+    fetchProducts();
   }, [slug]);
 
-  // Challenge 1: Sorting Implementation (low to high, high to low)
-  const sortedProducts = [...productsData].sort((a: any, b: any) => {
+  const sortedProducts = [...products].sort((a, b) => {
     const priceA = a.today || 0;
     const priceB = b.today || 0;
-    
-    if (sortOrder === "asc") {
-        return priceA - priceB;
-    } else if (sortOrder === "desc") {
-        return priceB - priceA;
-    }
-    return 0; // default state e kichu korbe na
+    if (sortOrder === "lowToHigh") return priceA - priceB;
+    if (sortOrder === "highToLow") return priceB - priceA;
+    return 0;
   });
 
-  const categoryTitles: Record<string, string> = {
-    chal: "চাল", dal: "ডাল", tel: "তেল", sobji: "সবজি", mach: "মাছ", mangsho: "মাংস"
+  // ক্যাটাগরির নাম বাংলায় দেখানোর লজিক (এখানেই মেইন ফিক্সটা করেছি)
+  const getCategoryDetails = (s: string) => {
+    const categories: Record<string, { name: string; emoji: string }> = {
+      'chal': { name: 'চাল', emoji: '🍚' },
+      'dal': { name: 'ডাল', emoji: '🥣' },
+      'tel': { name: 'তেল', emoji: '🛢️' },
+      'sobji': { name: 'সবজি', emoji: '🥬' },
+      'mach': { name: 'মাছ', emoji: '🐟' },
+      'mangsho': { name: 'মাংস', emoji: '🥩' },
+      'dim-dudh': { name: 'ডিম-দুধ', emoji: '🥚' },
+      'mosholla': { name: 'মসলা', emoji: '🌶️' }
+    };
+    // যদি slug ম্যাচ না করে তাহলে ডিফল্ট ভ্যালু দেখাবে
+    return categories[s] || { name: s, emoji: '📦' }; 
   };
-  const title = categoryTitles[slug] || "পণ্যসমূহ";
+
+  const currentCategory = getCategoryDetails(slug);
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8 min-h-[70vh]">
-      
-      <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 mb-6">
-        <div className="text-4xl bg-gray-50 p-3 rounded-xl">
-          {slug === 'chal' ? '🍚' : slug === 'dal' ? '🫘' : slug === 'tel' ? '🛢️' : slug === 'sobji' ? '🥬' : slug === 'mach' ? '🐟' : slug === 'mangsho' ? '🥩' : '🛒'}
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
-          <p className="text-sm text-gray-500">প্রতি পণ্যের আজকের দাম ও পরিবর্তন</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <p className="text-sm text-gray-500">মোট {enToBnNumber(sortedProducts.length)}টি পণ্য দেখানো হচ্ছে</p>
+    <div className="max-w-6xl mx-auto px-4 py-8 min-h-[75vh]">
+      {/* ক্যাটাগরি হেডার ও ফিল্টার */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-gray-100 pb-4 gap-4">
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+           <span className="bg-green-50 text-green-600 p-2 rounded-xl text-xl">{currentCategory.emoji}</span> 
+           {currentCategory.name}
+        </h1>
         
-        {/* Challenge 1: Dropdown for sort */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600 font-medium">সাজান</span>
+          <span className="text-sm text-gray-500 font-medium">সাজান:</span>
           <select 
-            className="select select-sm select-bordered bg-white border-gray-300 text-gray-700 outline-none focus:border-green-600 rounded-lg"
-            value={sortOrder}
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer bg-white font-medium text-gray-700"
+            value={sortOrder} 
             onChange={(e) => setSortOrder(e.target.value)}
           >
             <option value="default">ডিফল্ট</option>
-            <option value="asc">দাম: কম থেকে বেশি</option>
-            <option value="desc">দাম: বেশি থেকে কম</option>
+            <option value="lowToHigh">দাম: কম থেকে বেশি</option>
+            <option value="highToLow">দাম: বেশি থেকে কম</option>
           </select>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-            <div key={n} className="skeleton h-32 w-full rounded-xl bg-gray-100"></div>
-          ))}
-        </div>
+      {/* প্রোডাক্ট লিস্ট */}
+      {loading ? (
+         <div className="text-center py-20 text-green-600 font-bold animate-pulse">লোড হচ্ছে...</div>
       ) : sortedProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {sortedProducts.map((product: any, idx: number) => (
+          {sortedProducts.map((product, idx) => (
             <ProductCard product={product} key={idx} />
           ))}
         </div>
       ) : (
-         <div className="text-center py-20 bg-gray-50 rounded-xl border border-gray-200">
-           <h2 className="text-2xl font-bold text-gray-800 mb-2">এই ক্যাটাগরিতে কোনো পণ্য পাওয়া যায়নি!</h2>
-         </div>
+        <div className="text-center py-20 text-gray-500">এই ক্যাটাগরিতে আপাতত কোনো পণ্য নেই।</div>
       )}
-    </main>
+    </div>
   );
 }

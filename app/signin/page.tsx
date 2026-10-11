@@ -1,50 +1,42 @@
 "use client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+
 import { useState } from "react";
-import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SignIn() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    const namePart = email.split("@")[0] || "ইউজার";
-    localStorage.setItem("userName", namePart); // লগিন ইমেইলের প্রথম অংশ নাম হিসেবে সেভ হবে
-    
-    toast.success("সফলভাবে লগিন হয়েছে!");
-    setTimeout(() => {
-      router.push("/");
-    }, 1000);
+    // ইউজারের নাম হিসেবে ডেমো একটা নাম সেভ করে দিচ্ছি অ্যাসাইনমেন্টের জন্য
+    localStorage.setItem("bazar_user", JSON.stringify({ name: "Ifaj Hossain", email }));
+    router.push("/"); // লগইন শেষে হোমপেজে চলে যাবে
   };
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center py-10 px-4 bg-gray-50/30">
-      <div className="card w-full max-w-md bg-white shadow-xl border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">সাইন ইন করুন</h2>
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <div>
-            <label className="label"><span className="label-text font-bold text-gray-600">ইমেইল ঠিকানা</span></label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="input input-bordered w-full focus:border-green-600 focus:outline-none" required />
+    <div className="min-h-[80vh] flex items-center justify-center bg-gray-50/50 px-4">
+      <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-gray-100 w-full max-w-md text-center">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">সাইন ইন</h2>
+        <p className="text-sm text-gray-500 mb-8">বিস্তারিত দাম, বাজার তুলনা ও প্রোফাইল দেখতে অ্যাকাউন্টে ঢুকুন।</p>
+        
+        <form onSubmit={handleSignIn} className="flex flex-col gap-4">
+          <div className="text-left">
+             <label className="text-xs text-gray-500 mb-1 block">ইমেইল</label>
+             <input type="email" placeholder="example@gmail.com" required className="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-blue-50/30 text-sm" onChange={e => setEmail(e.target.value)} />
           </div>
-          <div>
-            <label className="label"><span className="label-text font-bold text-gray-600">পাসওয়ার্ড</span></label>
-            <input type="password" placeholder="••••••••" className="input input-bordered w-full focus:border-green-600 focus:outline-none" required />
+          <div className="text-left mb-2">
+             <label className="text-xs text-gray-500 mb-1 block">পাসওয়ার্ড</label>
+             <input type="password" placeholder="••••••••" required className="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-blue-50/30 text-sm" onChange={e => setPassword(e.target.value)} />
           </div>
-          <button type="submit" className="btn bg-green-700 hover:bg-green-800 text-white w-full mt-4 border-none text-lg">লগিন</button>
+          <button type="submit" className="bg-green-600 text-white py-2.5 rounded-lg font-bold hover:bg-green-700 transition-colors">সাইন ইন</button>
         </form>
-        
-        <div className="divider my-6 text-gray-400">অথবা</div>
-        
-        <div className="flex flex-col gap-3">
-          <button onClick={() => toast.success("Google দিয়ে লগিন সফল!")} className="btn btn-outline border-gray-300 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300 w-full">Google দিয়ে লগিন</button>
-          <button onClick={() => toast.success("GitHub দিয়ে লগিন সফল!")} className="btn bg-gray-900 hover:bg-gray-800 text-white w-full border-none">GitHub দিয়ে লগিন</button>
+
+        <div className="mt-6 text-sm text-gray-500">
+           অ্যাকাউন্ট নেই? <Link href="/signup" className="text-green-600 font-bold hover:underline">সাইন আপ করুন</Link>
         </div>
-        
-        <p className="text-center text-sm text-gray-600 mt-8">
-          অ্যাকাউন্ট নেই? <Link href="/signup" className="text-green-600 font-bold hover:underline">সাইন আপ করুন</Link>
-        </p>
       </div>
     </div>
   );
